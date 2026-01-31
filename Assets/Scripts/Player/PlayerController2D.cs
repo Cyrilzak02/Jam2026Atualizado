@@ -41,6 +41,7 @@ public class PlayerController2D : MonoBehaviour
 
     Rigidbody2D rb;
     PlayerInput playerInput;
+    Animator anim;
 
     InputAction moveAction;
     InputAction jumpAction;
@@ -68,11 +69,19 @@ public class PlayerController2D : MonoBehaviour
     {
         rb = GetComponent<Rigidbody2D>();
         playerInput = GetComponent<PlayerInput>();
+        anim = GetComponent<Animator>();
 
         normalGravityScale = rb.gravityScale;
         originalScale = transform.localScale;
         
         jumpsRemaining = 1;
+
+        anim.SetInteger("NoMask", 0); // Sem máscara (Idle)
+        anim.SetInteger("Monkey", 5); // Máscara macaco desativada
+        anim.SetInteger("Dragon", 5); // Máscara dragão desativada
+        anim.SetInteger("Snake", 5); // Máscara serpente desativada
+        anim.SetInteger("Rabbit", 5); // Máscara coelho desativada
+
 
         SetupGroundCheck();
     }
@@ -106,6 +115,8 @@ public class PlayerController2D : MonoBehaviour
 
     void Update()
     {
+        UpdateAnimations();
+
         // read movement
         if (moveAction != null)
             moveInput = moveAction.ReadValue<Vector2>();
@@ -226,6 +237,7 @@ public class PlayerController2D : MonoBehaviour
             rb.gravityScale = normalGravityScale;
         }
 
+
     }
 
     // ================= MOVEMENT =================
@@ -242,6 +254,15 @@ public class PlayerController2D : MonoBehaviour
             Mathf.Lerp(rb.linearVelocity.x, targetVelocityX, smoothing),
             rb.linearVelocity.y
         );
+        anim.SetInteger("NoMask", 1); // Sem máscara (Correndo)
+
+        if (moveInput.x > 0f)
+            transform.localScale = new Vector3(Mathf.Abs(originalScale.x), originalScale.y, originalScale.z);
+        else if (moveInput.x < 0f)
+            transform.localScale = new Vector3(-Mathf.Abs(originalScale.x), originalScale.y, originalScale.z);
+
+        if (moveInput.x == 0f && isGrounded)
+            anim.SetInteger("NoMask", 0); // Sem máscara (Idle)
 
     }
 
@@ -529,4 +550,68 @@ public class PlayerController2D : MonoBehaviour
             Debug.Log("[PlayerController] Cleared air jumps.");
         }
     }
+
+
+    void UpdateAnimations()
+    {
+        if (anim == null) return;
+
+        var abilities = GetComponent<PlayerAbilities>();
+        AbilityType equipped = abilities != null ? abilities.GetEquipped() : AbilityType.None;
+
+        // --- Define estado base ---
+        int state = 0; // idle
+        if (!isGrounded)
+            state = rb.linearVelocity.y > 0.1f ? 2 : 3; // 2 = pulando, 3 = caindo
+        else if (Mathf.Abs(moveInput.x) > 0.1f)
+            state = 1; // correndo
+
+        // --- Ajusta para ações especiais ---
+        if (isDashing && (equipped == AbilityType.DoubleJump || equipped == AbilityType.Dash))
+            state = 4; // dash
+        if (isWallSliding && equipped == AbilityType.WallJump)
+            state = 4; // wall slide
+        if (isGliding && equipped == AbilityType.Glide)
+            state = 4; // planando
+
+        // --- Mapeamento de AbilityType para parâmetro do Animator ---
+        Dictionary<AbilityType, string> animParams = new Dictionary<AbilityType, string>()
+        {
+            { AbilityType.None, "NoMask" },
+            { AbilityType.DoubleJump, "Rabbit" },
+            { AbilityType.Dash, "Snake" },
+            { AbilityType.WallJump, "Monkey" },
+            { AbilityType.Glide, "Dragon" }
+        };
+
+        // --- Ativa a SSM correspondente e desativa todas as outras ---
+        foreach (var kvp in animParams)
+        {
+            int val = (kvp.Key == equipped) ? state : 5; // 5 = desativado
+            anim.SetInteger(kvp.Value, val);
+        }
+    }
+
+    /// <summary>
+    /// Força a animação Idle da SSM da habilidade atual
+    /// </summary>
+    public void PlayAbilityIdle(AbilityType ability)
+    {
+        if (anim == null) return;
+
+        string statePath = ability switch
+        {
+            AbilityType.DoubleJump => "Rabbit/Idle",
+            AbilityType.Dash => "Snake/Idle",
+            AbilityType.WallJump => "Monkey/Idle",
+            AbilityType.Glide => "Dragon/Idle",
+            _ => "NoMask/Idle"
+        };
+
+        anim.Play(statePath, 0, 0f); // layer 0, tempo 0f
+    }
+
+
+
+
 }

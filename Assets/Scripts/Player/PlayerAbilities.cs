@@ -152,6 +152,11 @@ public class PlayerAbilities : MonoBehaviour
         return equipped == type;
     }
 
+    public AbilityType GetEquipped()
+    {
+        return equipped;
+    }
+
     public void TryEquip(AbilityType type)
     {
         if (type == AbilityType.None) return;
@@ -172,6 +177,9 @@ public class PlayerAbilities : MonoBehaviour
         Unequip(); // desativa a habilidade anterior
         equipped = type;
         ApplyColor(type);
+
+        // força a animação idle correta
+        playerController.PlayAbilityIdle(type);
 
         switch (type)
         {
