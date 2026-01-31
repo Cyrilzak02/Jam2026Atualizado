@@ -72,7 +72,7 @@ public class TimerUI : MonoBehaviour
                 // intensidade maior para ganhos, menor para perdas
                 float mag = 0.03f;
                 float dur = 0.15f;
-                shake.Shake(mag, dur);
+               // shake.Shake(mag, dur);
             }
         }
         else if (currentTime <= warningTime){
