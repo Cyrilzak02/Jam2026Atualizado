@@ -161,18 +161,47 @@ public class PlayerAbilities : MonoBehaviour
             return;
         }
 
+        // Se já estiver equipada, desativa
         if (equipped == type)
         {
             Unequip();
             return;
         }
 
-        Unequip();
+        // --- Faz o swap entre habilidades ---
+        Unequip(); // desativa a habilidade anterior
         equipped = type;
         ApplyColor(type);
 
-        if (type == AbilityType.WallJump)
-            playerController.EnableWallGrip(true);
+        switch (type)
+        {
+            case AbilityType.DoubleJump:
+                // Se estava planando, para o glide e dá pulo no ar
+                playerController.SetExternalGlide(false);
+                playerController.EnableWallGrip(false);
+                playerController.GrantAirDoubleJump();
+                break;
+
+            case AbilityType.Glide:
+                // Remove qualquer pulo extra e garante que só planará segurando espaço
+                playerController.ClearAirJumps();
+                playerController.EnableWallGrip(false);
+                break;
+
+            case AbilityType.WallJump:
+                // Ativa o grip e desativa glide/pulos extras
+                playerController.EnableWallGrip(true);
+                playerController.ClearAirJumps();
+                playerController.SetExternalGlide(false);
+                break;
+
+            case AbilityType.Dash:
+                // Apenas certifique que não há glide ativo
+                playerController.SetExternalGlide(false);
+                playerController.EnableWallGrip(false);
+                playerController.ClearAirJumps();
+                break;
+        }
 
         Debug.Log($"Equipped {type}");
     }
@@ -181,15 +210,31 @@ public class PlayerAbilities : MonoBehaviour
     {
         if (equipped == AbilityType.None) return;
 
-        if (equipped == AbilityType.WallJump)
-            playerController.EnableWallGrip(false);
+        switch (equipped)
+        {
+            case AbilityType.WallJump:
+                playerController.EnableWallGrip(false);
+                break;
 
-        if (equipped == AbilityType.Glide)
-            playerController.SetExternalGlide(false);
+            case AbilityType.Glide:
+                playerController.SetExternalGlide(false);
+                break;
+
+            case AbilityType.DoubleJump:
+                playerController.ClearAirJumps();
+                break;
+        }
 
         equipped = AbilityType.None;
         ApplyColor(AbilityType.None);
     }
+
+    public void ForceUnequip()
+    {
+        Unequip();
+    }
+
+
 
     void ApplyColor(AbilityType type)
     {

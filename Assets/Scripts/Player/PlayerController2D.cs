@@ -133,21 +133,33 @@ public class PlayerController2D : MonoBehaviour
         }
 
         // GLIDE — segurar botão de pulo (space)
+        var abilities = GetComponent<PlayerAbilities>();
+        bool hasGlide = abilities != null && abilities.IsEquipped(AbilityType.Glide);
+
         bool isHoldingJump = jumpAction != null && jumpAction.ReadValue<float>() > 0f;
-        bool canGlide = !isGrounded && !IsTouchingWall() && rb.linearVelocity.y <= 0f;
+        bool canGlide = hasGlide && !isGrounded && !IsTouchingWall() && rb.linearVelocity.y <= 0f;
 
         isGliding = externallyControlledGlideActive || (canGlide && isHoldingJump);
+
         if (isGliding)
         {
             glideTimer += Time.deltaTime;
+
+            // se passou do tempo máximo de planagem
             if (glideTimer > maxGlideTime)
-                isGliding = false; // desativa ao passar do tempo
+            {
+                isGliding = false;
+                glideTimer = 0f;
+
+                Debug.Log("[Glide] Tempo máximo atingido, desequipando habilidade.");
+                if (abilities != null && abilities.IsEquipped(AbilityType.Glide))
+                    abilities.ForceUnequip(); // 🔥 desequipa automaticamente
+            }
         }
         else
         {
             glideTimer = 0f;
         }
-
 
 
         // dash by keyboard (legacy); abilities will call StartDashFromAbility()
@@ -246,8 +258,8 @@ public class PlayerController2D : MonoBehaviour
             int direction = touchingRight ? -1 : (touchingLeft ? 1 : 0);
             if (direction == 0) return;
 
-            float horizontalSpeed = jumpForce * 2.2f;
-            float verticalSpeed   = jumpForce * 0.65f;
+            float horizontalSpeed = jumpForce * 1.2f;
+            float verticalSpeed   = jumpForce * 0.9f;
 
             rb.linearVelocity = new Vector2(direction * horizontalSpeed, verticalSpeed);
 
@@ -290,6 +302,12 @@ public class PlayerController2D : MonoBehaviour
 
             Debug.Log("[DoubleJump] Activated");
             OnJumped?.Invoke();
+
+            // 🔥 força o desequipar do double jump após o uso
+            var ability = GetComponent<PlayerAbilities>();
+            if (ability != null && ability.IsEquipped(AbilityType.DoubleJump))
+                ability.ForceUnequip();
+
             return;
         }
 
@@ -408,6 +426,14 @@ public class PlayerController2D : MonoBehaviour
             // sempre garante 1 pulo quando está no chão
             jumpsRemaining = 1;
             rb.gravityScale = normalGravityScale;
+
+            // se estava com glide equipado, remove ao tocar o chão
+            if (abilities != null && abilities.IsEquipped(AbilityType.Glide))
+            {
+                Debug.Log("[Glide] Pousou no chão — habilidade removida automaticamente.");
+                abilities.ForceUnequip();
+            }
+
         }
 
 
@@ -477,4 +503,30 @@ public class PlayerController2D : MonoBehaviour
             }
         }
     #endif
+
+    /// <summary>
+    /// Concede um double jump imediato (1 pulo) enquanto o jogador estiver no ar.
+    /// Usado quando o jogador equipa DoubleJump enquanto já estiver no ar/planando.
+    /// </summary>
+    public void GrantAirDoubleJump()
+    {
+        if (!isGrounded)
+        {
+            jumpsRemaining = 1;
+            Debug.Log("[PlayerController] Granted air double jump.");
+        }
+    }
+
+    /// <summary>
+    /// Remove qualquer pulo extra disponível no ar (zera jumpsRemaining).
+    /// Usado por exemplo ao trocar para Glide para evitar double jump depois.
+    /// </summary>
+    public void ClearAirJumps()
+    {
+        if (!isGrounded)
+        {
+            jumpsRemaining = 0;
+            Debug.Log("[PlayerController] Cleared air jumps.");
+        }
+    }
 }
