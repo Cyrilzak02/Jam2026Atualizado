@@ -57,6 +57,7 @@ public class PlayerController2D : MonoBehaviour
     float dashTimer;
     float normalGravityScale;
     Vector3 originalScale;
+    public HUDAbilityIcon hudAbility; // reference to HUD icon
 
     // --- New fields for abilities / external controls ---
     bool externallyControlledGlideActive = false; // set by ability system
@@ -178,6 +179,15 @@ public class PlayerController2D : MonoBehaviour
         {
             StartDash();
         }
+
+        hudAbility.SetAbility(
+            abilities.IsEquipped(AbilityType.Dash) ? AbilityType.Dash :
+            abilities.IsEquipped(AbilityType.DoubleJump) ? AbilityType.DoubleJump :
+            abilities.IsEquipped(AbilityType.WallJump) ? AbilityType.WallJump :
+            abilities.IsEquipped(AbilityType.Glide) ? AbilityType.Glide :
+            AbilityType.None
+        );
+
     }
 
     void FixedUpdate()
@@ -201,18 +211,29 @@ public class PlayerController2D : MonoBehaviour
         // WALL SLIDE — apenas se a habilidade estiver ativa
         if (wallGripEnabled && !isGrounded && IsTouchingWall() && rb.linearVelocity.y <= 0f)
         {
-            isWallSliding = true;
+            if (!isWallSliding)
+            {
+                isWallSliding = true;
+                // bloqueia horizontal levemente ao encostar na parede
+                rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
+            }
 
             // desce devagar
-            if (rb.linearVelocity.y < wallSlideSpeed * 0.5f)
-                rb.linearVelocity = new Vector2(rb.linearVelocity.x, wallSlideSpeed * 0.5f);
+            if (rb.linearVelocity.y < wallSlideSpeed)
+                rb.linearVelocity = new Vector2(rb.linearVelocity.x, wallSlideSpeed);
         }
         else
         {
-            isWallSliding = false;
+            // apenas desativa wall slide se já não estiver no chão
+            if (isWallSliding && isGrounded)
+                isWallSliding = false;
+
+            // se estiver no ar mas não encostando na parede, desativa wall slide com delay
+            if (isWallSliding && !IsTouchingWall())
+                StartCoroutine(DisableWallSlideNextFrame());
+
             Move();
         }
-
 
         if (jumpRequested)
         {
@@ -241,6 +262,12 @@ public class PlayerController2D : MonoBehaviour
     }
 
     // ================= MOVEMENT =================
+
+    IEnumerator DisableWallSlideNextFrame()
+    {
+        yield return null; // espera 1 frame
+        isWallSliding = false;
+    }
 
     void Move()
     {
@@ -561,16 +588,25 @@ public class PlayerController2D : MonoBehaviour
 
         // --- Define estado base ---
         int state = 0; // idle
-        if (!isGrounded)
-            state = rb.linearVelocity.y > 0.1f ? 2 : 3; // 2 = pulando, 3 = caindo
+
+        if (isWallSliding && equipped == AbilityType.WallJump)
+        {
+            transform.localScale = new Vector3(-Mathf.Abs(originalScale.x), originalScale.y, originalScale.z);
+            state = 4; // wall slide
+        }
+        else if (!isGrounded)
+        {
+            state = rb.linearVelocity.y > 0.1f ? 2 : 3; // pulando / caindo
+        }
         else if (Mathf.Abs(moveInput.x) > 0.1f)
+        {
             state = 1; // correndo
+        }
 
         // --- Ajusta para ações especiais ---
         if (isDashing && (equipped == AbilityType.DoubleJump || equipped == AbilityType.Dash))
-            state = 4; // dash
-        if (isWallSliding && equipped == AbilityType.WallJump)
-            state = 4; // wall slide
+            state = 4; // dash  
+
         if (isGliding && equipped == AbilityType.Glide)
             state = 4; // planando
 

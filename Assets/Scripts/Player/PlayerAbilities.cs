@@ -32,7 +32,7 @@ public class PlayerAbilities : MonoBehaviour
     public Color colorWallJump = new Color(1f, 0.84f, 0f); // dourado
     public Color colorDoubleJump = new Color(1f, 0.76f, 0.80f); // pêssego
     public Color colorGlide = Color.red;
-    public Color colorDash = new Color(0f, 0.4f, 0f); // verde escuro
+    public Color colorDash = Color.white; 
     public Color colorNone = Color.white;
 
     private SpriteRenderer sr;
@@ -181,6 +181,11 @@ public class PlayerAbilities : MonoBehaviour
         // força a animação idle correta
         playerController.PlayAbilityIdle(type);
 
+        var hud = FindObjectOfType<HUDAbilityIcon>();
+        if(hud != null)
+            hud.SetAbility(equipped);
+
+
         switch (type)
         {
             case AbilityType.DoubleJump:
@@ -188,12 +193,20 @@ public class PlayerAbilities : MonoBehaviour
                 playerController.SetExternalGlide(false);
                 playerController.EnableWallGrip(false);
                 playerController.GrantAirDoubleJump();
+
+                if(hud != null)
+                    hud.SetAbility(AbilityType.DoubleJump);
+                
                 break;
 
             case AbilityType.Glide:
                 // Remove qualquer pulo extra e garante que só planará segurando espaço
                 playerController.ClearAirJumps();
                 playerController.EnableWallGrip(false);
+
+                if(hud != null)
+                    hud.SetAbility(AbilityType.Glide);
+                
                 break;
 
             case AbilityType.WallJump:
@@ -201,6 +214,10 @@ public class PlayerAbilities : MonoBehaviour
                 playerController.EnableWallGrip(true);
                 playerController.ClearAirJumps();
                 playerController.SetExternalGlide(false);
+
+                if(hud != null)
+                    hud.SetAbility(AbilityType.WallJump);
+                
                 break;
 
             case AbilityType.Dash:
@@ -208,6 +225,10 @@ public class PlayerAbilities : MonoBehaviour
                 playerController.SetExternalGlide(false);
                 playerController.EnableWallGrip(false);
                 playerController.ClearAirJumps();
+
+                if(hud != null)
+                    hud.SetAbility(AbilityType.Dash);
+                
                 break;
         }
 
@@ -217,19 +238,24 @@ public class PlayerAbilities : MonoBehaviour
     void Unequip()
     {
         if (equipped == AbilityType.None) return;
-
+        
         switch (equipped)
         {
             case AbilityType.WallJump:
                 playerController.EnableWallGrip(false);
+                
+               
+
                 break;
 
             case AbilityType.Glide:
                 playerController.SetExternalGlide(false);
+
                 break;
 
             case AbilityType.DoubleJump:
                 playerController.ClearAirJumps();
+
                 break;
         }
 
