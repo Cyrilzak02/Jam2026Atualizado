@@ -1,5 +1,7 @@
 using System;
 using UnityEngine;
+using System.Collections;
+using System.Collections.Generic;
 
 public class TimerManager : MonoBehaviour
 {
@@ -14,6 +16,7 @@ public class TimerManager : MonoBehaviour
 
     public event Action<float> OnTimeChanged;
     public event Action OnTimerEnded;
+    
 
     private void Awake()
     {

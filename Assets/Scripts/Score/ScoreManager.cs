@@ -37,4 +37,14 @@ public class ScoreManager : MonoBehaviour
     {
         AddScore(-amount);
     }
+
+    public void ResetScore()
+    {
+        int oldScore = Score;
+        Score = 0;
+        int delta = Score - oldScore;
+
+        OnScoreChanged?.Invoke(Score, delta);
+        Debug.Log("[ScoreManager] Score resetado e evento disparado.");
+    }
 }

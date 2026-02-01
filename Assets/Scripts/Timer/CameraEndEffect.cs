@@ -58,7 +58,7 @@ public class CameraEndEffect : MonoBehaviour
             TimerManager.Instance.OnTimerEnded -= OnTimerEnded;
     }
 
-    private void OnTimerEnded()
+    public void OnTimerEnded()
     {
         Debug.Log("[CameraEndEffect] Timer chegou a zero — iniciando efeito de câmera...");
         if (player == null)

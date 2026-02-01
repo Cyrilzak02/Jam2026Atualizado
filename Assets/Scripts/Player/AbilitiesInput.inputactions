@@ -68,6 +68,15 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "Exit",
+                    "type": "Button",
+                    "id": "46226682-45d1-4811-b72e-ba8d52c4ab14",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -75,6 +84,17 @@
                     "name": "",
                     "id": "741989d1-1504-43b5-a6c3-aed3b4ad717a",
                     "path": "<Keyboard>/leftArrow",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Double",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "88f8fc55-f8f9-47e8-b917-fdd1fde162eb",
+                    "path": "<Gamepad>/rightShoulder",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
@@ -96,7 +116,7 @@
                 {
                     "name": "",
                     "id": "dc3ea2b1-29ab-4d6b-af89-4b44e05471c3",
-                    "path": "",
+                    "path": "<Gamepad>/leftShoulder",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
@@ -118,7 +138,7 @@
                 {
                     "name": "",
                     "id": "a3fb9629-e823-4a0f-b7a7-4b468e2996ed",
-                    "path": "",
+                    "path": "<Gamepad>/leftTrigger",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
@@ -140,7 +160,7 @@
                 {
                     "name": "",
                     "id": "0b9a1361-9777-4879-8154-a045f49076d6",
-                    "path": "",
+                    "path": "<Gamepad>/rightTrigger",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
@@ -162,7 +182,7 @@
                 {
                     "name": "",
                     "id": "d56d5155-4a64-4c4d-adc8-6f461f3a4e8e",
-                    "path": "",
+                    "path": "<Gamepad>/buttonWest",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
@@ -294,11 +314,33 @@
                 {
                     "name": "",
                     "id": "8cb925ad-84ae-454a-a988-d126b38adccc",
-                    "path": "",
+                    "path": "<Gamepad>/buttonSouth",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
                     "action": "Jump",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "25519b05-e605-4e86-82c1-7ce0083a1ad9",
+                    "path": "<Keyboard>/escape",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Exit",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "c067a0b2-16f5-4457-912e-89880393c0fd",
+                    "path": "<Gamepad>/start",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Exit",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

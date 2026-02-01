@@ -17,6 +17,7 @@ public class PlayerRespawnController : MonoBehaviour
     private PlayerController2D playerController;
     private PlayerAbilities playerAbilities;
     public TimerManager timer;
+    public ScoreManager score; // pode ser arrastado no inspector
 
     [HideInInspector] public bool dying = false;
     private bool isRespawning = false;
@@ -28,9 +29,12 @@ public class PlayerRespawnController : MonoBehaviour
         playerController = GetComponent<PlayerController2D>();
         playerAbilities = GetComponent<PlayerAbilities>();
 
+        // conecta automaticamente ao ScoreManager se houver um na cena
+        if (score == null && ScoreManager.Instance != null)
+            score = ScoreManager.Instance;
+
         lastCheckpointPosition = transform.position;
 
-        // 🔥 Torna o Animator independente do Time.timeScale
         if (anim != null)
             anim.updateMode = AnimatorUpdateMode.UnscaledTime;
     }
@@ -41,6 +45,7 @@ public class PlayerRespawnController : MonoBehaviour
 
         if (transform.position.y < fallDeathY || (timer != null && timer.CurrentTime <= 0))
         {
+            Debug.Log("[Respawn] Chamando rotina de respawn...");
             StartCoroutine(RespawnRoutine());
         }
     }
@@ -55,43 +60,49 @@ public class PlayerRespawnController : MonoBehaviour
         isRespawning = true;
         dying = true;
 
-        // 🔥 Pausa o tempo e a física
         Time.timeScale = 0f;
         rb.linearVelocity = Vector2.zero;
         rb.angularVelocity = 0f;
         rb.simulated = false;
 
-        // 🔥 Pausa o timer
         if (timer != null)
             timer.PauseTimer();
 
-        // 🔥 Bloqueia controles e troca de habilidades
         if (playerController != null)
             playerController.enabled = false;
         if (playerAbilities != null)
             playerAbilities.enabled = false;
 
-        // 🔥 Animação de morte (roda em tempo real)
+        // 🧮 Reseta o score
+        if (score == null && ScoreManager.Instance != null)
+            score = ScoreManager.Instance;
+
+        if (score != null)
+        {
+            score.ResetScore();
+            Debug.Log("[Respawn] Score resetado após morte!");
+        }
+        else
+        {
+            Debug.LogWarning("[Respawn] Nenhum ScoreManager encontrado!");
+        }
+
+        // animação de morte
         if (anim != null)
         {
-            anim.updateMode = AnimatorUpdateMode.UnscaledTime; // garante independência do timeScale
+            anim.updateMode = AnimatorUpdateMode.UnscaledTime;
             anim.SetInteger("NoMask", 6);
         }
 
-        // Espera 2 segundos em tempo real
         yield return new WaitForSecondsRealtime(deathAnimDuration);
 
-        // Fade OUT
         yield return StartCoroutine(Fade(1f, fadeDuration, true));
 
-        // Teleporta o jogador para o último checkpoint
         transform.position = lastCheckpointPosition;
 
-        // Fade IN
         yield return new WaitForSecondsRealtime(0.5f);
         yield return StartCoroutine(Fade(0f, fadeDuration, true));
 
-        // 🔁 Restaura física e controles
         rb.simulated = true;
         Time.timeScale = 1f;
 
@@ -100,15 +111,13 @@ public class PlayerRespawnController : MonoBehaviour
         if (playerAbilities != null)
             playerAbilities.enabled = true;
 
-        // 🔁 Reseta o timer
         if (timer != null)
             timer.ResetAndStartTimer();
 
-        // 🔁 Retorna à idle
         dying = false;
         if (anim != null)
         {
-            anim.updateMode = AnimatorUpdateMode.Normal; // volta ao modo padrão
+            anim.updateMode = AnimatorUpdateMode.Normal;
             anim.SetInteger("NoMask", 0);
         }
 

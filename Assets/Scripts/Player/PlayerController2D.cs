@@ -3,6 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
+
 
 [RequireComponent(typeof(Rigidbody2D))]
 [RequireComponent(typeof(PlayerInput))]
@@ -49,6 +51,7 @@ public class PlayerController2D : MonoBehaviour
 
     InputAction moveAction;
     InputAction jumpAction;
+    InputAction exitAction;
 
     Vector2 moveInput;
     public bool isGrounded { get; private set; }
@@ -130,10 +133,16 @@ public class PlayerController2D : MonoBehaviour
     {
         moveAction = playerInput.actions.FindAction("Move", true);
         jumpAction = playerInput.actions.FindAction("Jump", true);
+        exitAction = playerInput.actions.FindAction("Exit", true);
     }
 
     void Update()
     {
+        if (exitAction != null && exitAction.WasPressedThisFrame())
+        {
+            LoadScene();
+        }
+
         if (respawn != null && respawn.dying)
         return; // ignora inputs, poderes etc.
 
@@ -213,6 +222,11 @@ public class PlayerController2D : MonoBehaviour
 
     void FixedUpdate()
     {
+        if (exitAction != null && exitAction.WasPressedThisFrame())
+        {
+            LoadScene();
+        }
+
         if (respawn != null && respawn.dying)
         return; // ignora inputs, poderes etc.
 
@@ -708,6 +722,19 @@ public class PlayerController2D : MonoBehaviour
 
         anim.Play(statePath, 0, 0f); // layer 0, tempo 0f
     }
+
+    public void LoadScene()
+    {
+        StartCoroutine(ChangeSceneAfterDelay());
+    }
+
+    IEnumerator ChangeSceneAfterDelay()
+    {
+        yield return new WaitForSeconds(1f);
+        SceneManager.LoadScene("Menu"); 
+    }
+
+    
 
 
 
