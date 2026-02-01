@@ -53,7 +53,7 @@ public class ScoreUI : MonoBehaviour
                 // intensidade maior para ganhos, menor para perdas
                 float mag = delta > 0 ? 0.1f : 0.07f;
                 float dur = 0.15f;
-                shake.Shake(mag, dur);
+              //  shake.Shake(mag, dur);
             }
         }
     }
