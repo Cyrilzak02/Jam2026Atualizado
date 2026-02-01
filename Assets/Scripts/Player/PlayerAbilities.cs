@@ -18,6 +18,7 @@ public class PlayerAbilities : MonoBehaviour
 {
     [Header("Refs")]
     public PlayerController2D playerController; // arraste no Inspector
+    PlayerRespawnController respawn;
 
     [Header("Cooldowns (s)")]
     public float doubleJumpCooldown = 5f;
@@ -29,9 +30,9 @@ public class PlayerAbilities : MonoBehaviour
     public float glideMaxDuration = 3f;
 
     [Header("Colors")]
-    public Color colorWallJump = new Color(1f, 0.84f, 0f); // dourado
-    public Color colorDoubleJump = new Color(1f, 0.76f, 0.80f); // pêssego
-    public Color colorGlide = Color.red;
+    public Color colorWallJump = Color.white; 
+    public Color colorDoubleJump = Color.white;
+    public Color colorGlide = Color.white;
     public Color colorDash = Color.white; 
     public Color colorNone = Color.white;
 
@@ -50,6 +51,15 @@ public class PlayerAbilities : MonoBehaviour
     private InputAction equipWallJumpAction;
     private InputAction equipGlideAction;
     private InputAction useAbilityAction;
+    
+    public GameObject hourglass;
+
+    [Header("Audios")]
+    public AudioSource RouletteSfx;
+    public AudioSource SnakeSfx;
+    public AudioSource RabbitSfx;
+    public AudioSource MonkeySfx;
+    public AudioSource DragonSfx;
 
     void Awake()
     {
@@ -63,6 +73,8 @@ public class PlayerAbilities : MonoBehaviour
         cooldowns[AbilityType.Dash] = 0f;
         cooldowns[AbilityType.WallJump] = 0f;
         cooldowns[AbilityType.Glide] = 0f;
+
+        hourglass.SetActive(false);
     }
 
     // métodos usados nos callbacks (evitam lambdas anônimas)
@@ -136,6 +148,9 @@ public class PlayerAbilities : MonoBehaviour
 
     void Update()
     {
+        if (respawn != null && respawn.dying)
+        return; // ignora inputs, poderes etc.
+
         // reduzir cooldowns
         var keys = new List<AbilityType>(cooldowns.Keys);
         foreach (var k in keys)
@@ -157,12 +172,20 @@ public class PlayerAbilities : MonoBehaviour
         return equipped;
     }
 
+    IEnumerator DisableHourglassAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        hourglass.SetActive(false);
+    }
+
     public void TryEquip(AbilityType type)
     {
         if (type == AbilityType.None) return;
         if (cooldowns[type] > 0f)
         {
             Debug.Log($"{type} em cooldown ({cooldowns[type]:F1}s)");
+            hourglass.SetActive(true);
+            StartCoroutine(DisableHourglassAfterDelay(1f));
             return;
         }
 
@@ -180,6 +203,23 @@ public class PlayerAbilities : MonoBehaviour
 
         // força a animação idle correta
         playerController.PlayAbilityIdle(type);
+
+        if (type == AbilityType.DoubleJump)
+        {
+            RabbitSfx.Play();
+        }
+        else if (type == AbilityType.WallJump)
+        {
+            MonkeySfx.Play();
+        }
+        else if (type == AbilityType.Dash)
+        {
+            SnakeSfx.Play();
+        }
+        else if (type == AbilityType.Glide)
+        {
+            DragonSfx.Play();
+        }
 
         var hud = FindObjectOfType<HUDAbilityIcon>();
         if(hud != null)
@@ -301,7 +341,6 @@ public class PlayerAbilities : MonoBehaviour
 
             case AbilityType.Dash:
                 playerController.StartDashFromAbility();
-                StartCooldown(AbilityType.Dash);
                 break;
 
             case AbilityType.WallJump:
@@ -310,6 +349,7 @@ public class PlayerAbilities : MonoBehaviour
                 break;
 
             case AbilityType.Glide:
+                // ✅ Agora permite iniciar mesmo no chão (mas só planará se estiver no ar)
                 if (glideRoutine == null)
                     glideRoutine = StartCoroutine(GlideHold());
                 break;
@@ -326,6 +366,7 @@ public class PlayerAbilities : MonoBehaviour
         }
     }
 
+
     IEnumerator GlideHold()
     {
         glideRemaining = glideMaxDuration;
@@ -333,6 +374,13 @@ public class PlayerAbilities : MonoBehaviour
 
         while (glideRemaining > 0f)
         {
+            // para o glide se tocar o chão
+            if (playerController.isGrounded)
+            {
+                Debug.Log("[Glide] Pousou no chão — encerrando glide.");
+                break;
+            }
+
             glideRemaining -= Time.unscaledDeltaTime;
             yield return null;
         }
@@ -344,13 +392,19 @@ public class PlayerAbilities : MonoBehaviour
     {
         playerController.SetExternalGlide(false);
         glideRoutine = null;
+
+        // 🔥 Deste ponto em diante, entra cooldown e desequipa
         StartCooldown(AbilityType.Glide);
+        ForceUnequip();
+
+        Debug.Log("[Glide] Encerrado e cooldown iniciado.");
     }
+
 
     // ============================================
     // COOLDOWN / EVENTOS
     // ============================================
-    void StartCooldown(AbilityType a)
+    public void StartCooldown(AbilityType a)
     {
         float cd = 1f;
         switch (a)

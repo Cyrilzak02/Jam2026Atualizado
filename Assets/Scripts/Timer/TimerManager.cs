@@ -61,4 +61,13 @@ public class TimerManager : MonoBehaviour
         OnTimeChanged?.Invoke(CurrentTime);
     }
 
+    public void ResetAndStartTimer()
+    {
+        CurrentTime = startTime;
+        IsRunning = true;
+        OnTimeChanged?.Invoke(CurrentTime);
+        Debug.Log("[TimerManager] Timer resetado e iniciado.");
+    }
+
+
 }

@@ -42,6 +42,10 @@ public class PlayerController2D : MonoBehaviour
     Rigidbody2D rb;
     PlayerInput playerInput;
     Animator anim;
+    PlayerRespawnController respawn;
+    Vector2 originalColliderSize;
+    Vector2 dashColliderSize;
+
 
     InputAction moveAction;
     InputAction jumpAction;
@@ -59,18 +63,26 @@ public class PlayerController2D : MonoBehaviour
     Vector3 originalScale;
     public HUDAbilityIcon hudAbility; // reference to HUD icon
 
-    // --- New fields for abilities / external controls ---
     bool externallyControlledGlideActive = false; // set by ability system
     public bool wallGripEnabled = false;            // when wall-jump ability equipped
 
     float lastMoveDir = 1f; // to pick dash direction when no input
     public event Action OnJumped; // other systems (abilities) can subscribe
+    public BoxCollider2D boxCollider;
+
+    [Header("Audios")]
+    public AudioSource mscFase2;
+    public AudioSource JumpSfx;
+    public AudioSource DashSfx;
+
+
 
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
         playerInput = GetComponent<PlayerInput>();
         anim = GetComponent<Animator>();
+        respawn = GetComponent<PlayerRespawnController>();
 
         normalGravityScale = rb.gravityScale;
         originalScale = transform.localScale;
@@ -83,6 +95,12 @@ public class PlayerController2D : MonoBehaviour
         anim.SetInteger("Snake", 5); // Máscara serpente desativada
         anim.SetInteger("Rabbit", 5); // Máscara coelho desativada
 
+        if (boxCollider != null)
+        {
+            Debug.Log("Foi");
+            originalColliderSize = boxCollider.size;
+            dashColliderSize = new Vector2(originalColliderSize.x, originalColliderSize.y * 0.01f);
+        }
 
         SetupGroundCheck();
     }
@@ -116,6 +134,9 @@ public class PlayerController2D : MonoBehaviour
 
     void Update()
     {
+        if (respawn != null && respawn.dying)
+        return; // ignora inputs, poderes etc.
+
         UpdateAnimations();
 
         // read movement
@@ -192,6 +213,9 @@ public class PlayerController2D : MonoBehaviour
 
     void FixedUpdate()
     {
+        if (respawn != null && respawn.dying)
+        return; // ignora inputs, poderes etc.
+
         
         if (movementLocked)
         {
@@ -298,6 +322,8 @@ public class PlayerController2D : MonoBehaviour
         var abilities = GetComponent<PlayerAbilities>();
         bool hasDoubleJump = abilities != null && abilities.IsEquipped(AbilityType.DoubleJump);
 
+        JumpSfx.Play();
+
         // WALL JUMP =====================================================
         if ((wallGripEnabled || isWallSliding) && IsTouchingWall())
         {
@@ -354,7 +380,10 @@ public class PlayerController2D : MonoBehaviour
             // 🔥 força o desequipar do double jump após o uso
             var ability = GetComponent<PlayerAbilities>();
             if (ability != null && ability.IsEquipped(AbilityType.DoubleJump))
+            {
+                ability.StartCooldown(AbilityType.DoubleJump); 
                 ability.ForceUnequip();
+            }
 
             return;
         }
@@ -389,37 +418,64 @@ public class PlayerController2D : MonoBehaviour
     // original StartDash kept for legacy input
     void StartDash()
     {
-        isDashing = true;
-        dashTimer = dashDuration;
-        transform.localScale = new Vector3(originalScale.x, originalScale.y * 0.6f, originalScale.z);
+        // Dash genérico — chamado pelo teclado ou habilidade
+        DoDash(dashSpeed, dashDuration);
     }
 
-    /// <summary>
-    /// Start dash from an external caller (ability). Uses lastMoveDir if no input.
-    /// </summary>
     public void StartDashFromAbility(float customSpeed = -1f, float customDuration = -1f)
     {
         if (isDashing) return;
 
-        isDashing = true;
-        dashTimer = customDuration > 0f ? customDuration : dashDuration;
-
         float dir = lastMoveDir != 0f ? Mathf.Sign(lastMoveDir) : 1f;
         float speed = customSpeed > 0f ? customSpeed : dashSpeed;
-        rb.linearVelocity = new Vector2(dir * speed, rb.linearVelocity.y);
+        float duration = customDuration > 0f ? customDuration : dashDuration;
 
-        transform.localScale = new Vector3(originalScale.x, originalScale.y * 0.6f, originalScale.z);
+        rb.linearVelocity = new Vector2(dir * speed, rb.linearVelocity.y);
+        DoDash(speed, duration);
+    }
+
+    private void DoDash(float speed, float duration)
+    {
+        isDashing = true;
+        dashTimer = duration;
+        DashSfx.Play();
+
+        // 🔥 Reduz o colisor sem alterar o visual
+        if (boxCollider != null)
+        {
+            boxCollider.size = dashColliderSize;
+            Debug.Log("[Dash] Collider reduzido!");
+        }
+
+        // Opcional: ligeiro efeito visual
+        transform.localScale = new Vector3(originalScale.x, originalScale.y * 0.9f, originalScale.z);
     }
 
     void DashMove()
     {
         dashTimer -= Time.fixedDeltaTime;
-        // while dashing maintain the velocity set when dash started
-        // (we already set rb.velocity in StartDashFromAbility)
+
         if (dashTimer <= 0f)
         {
             isDashing = false;
+
+            // 🔁 Restaura colisor
+            if (boxCollider != null)
+            {
+                boxCollider.size = originalColliderSize;
+                Debug.Log("[Dash] Collider restaurado!");
+            }
+
             transform.localScale = originalScale;
+
+            // encerra o poder corretamente
+            var abilities = GetComponent<PlayerAbilities>();
+            if (abilities != null && abilities.IsEquipped(AbilityType.Dash))
+            {
+                Debug.Log("[Dash] Terminou — iniciando cooldown e desequipando.");
+                abilities.StartCooldown(AbilityType.Dash);
+                abilities.ForceUnequip();
+            }
         }
     }
 
@@ -475,16 +531,22 @@ public class PlayerController2D : MonoBehaviour
             jumpsRemaining = 1;
             rb.gravityScale = normalGravityScale;
 
-            // se estava com glide equipado, remove ao tocar o chão
+            // --- Glide: encerra apenas se a habilidade realmente estava ativa via ability (externallyControlledGlideActive)
             if (abilities != null && abilities.IsEquipped(AbilityType.Glide))
             {
-                Debug.Log("[Glide] Pousou no chão — habilidade removida automaticamente.");
-                abilities.ForceUnequip();
+                // Se a habilidade havia ativado o glide (externallyControlledGlideActive) — encerre e aplique cooldown.
+                if (externallyControlledGlideActive)
+                {
+                    Debug.Log("[Glide] Pousou no chão — encerrando glide e iniciando cooldown.");
+                    // chama o mesmo caminho que o EndGlide() usa para manter a lógica centralizada
+                    abilities.StartCooldown(AbilityType.Glide);
+                    abilities.ForceUnequip();
+
+                    // garante que o player pare de aplicar o efeito de glide
+                    SetExternalGlide(false);
+                }
             }
-
         }
-
-
     }
 
     void SetupGroundCheck()

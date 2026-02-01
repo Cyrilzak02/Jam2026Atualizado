@@ -28,6 +28,10 @@ public class TimerUI : MonoBehaviour
     public float pulseScale = 1.25f;   // quanto cresce
     public float pulseSpeed = 0.8f;    // velocidade da pulsação
 
+    [Header("Timer Song")]
+    public AudioSource timerSfx;
+
+
     private void Awake()
     {
         tmp = GetComponent<TextMeshProUGUI>();
@@ -60,6 +64,11 @@ public class TimerUI : MonoBehaviour
         int seconds = Mathf.FloorToInt(currentTime % 60f);
         tmp.text = $"{prefix}{minutes:00}: {seconds:00}";
 
+        if(currentTime > warningTime)
+        {
+            timerSfx.Stop();
+        }
+
         // Define velocidade de piscagem conforme o tempo
         float desiredSpeed = 0f;
         if (currentTime <= criticalTime){
@@ -77,6 +86,7 @@ public class TimerUI : MonoBehaviour
         }
         else if (currentTime <= warningTime){
             desiredSpeed = warningFlashSpeed;
+            timerSfx.Play();
         }
             
 

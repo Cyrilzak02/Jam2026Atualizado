@@ -30,7 +30,7 @@ public class HUDAbilityIconPop : MonoBehaviour
     {
         float t = 0f;
         Vector3 startScale = Vector3.one * popStartScale;
-        Vector3 endScale = Vector3.one * 0.30703; // tamanho final correto
+        Vector3 endScale = Vector3.one * 0.44f; // tamanho final correto
         maskImage.transform.localScale = startScale;
 
         while (t < popDuration)
